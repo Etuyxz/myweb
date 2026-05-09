@@ -161,6 +161,22 @@ body{
     margin:0 auto;
     padding:1rem;
   }
+    .hero{
+    display:flex;
+    flex-direction:column;
+    height:auto;
+    min-height:100vh;
+  }
+  .left-col{
+    justify-content:center;
+    height:60vh;
+  }
+  .hero-photo-wrap{
+    margin-left:0;
+    width:70%;
+    margin:0 auto;
+  }
+}
 }
 /* ── IMAGE SLIDER ── */
 .slider-wrap{
@@ -172,6 +188,7 @@ body{
   box-shadow:0 8px 40px rgba(0,0,0,0.3);
   aspect-ratio:16/11;
   flex-shrink:0;
+  touch-action:none;
 }
 .slider-track{
   display:flex;
@@ -582,10 +599,11 @@ setInterval(()=>goSlide(cur_s+1),4000);
 
 // swipe support
 let ts=0;
-document.getElementById("sliderWrap").addEventListener("touchstart",e=>{ts=e.touches[0].clientX;},{passive:true});
+document.getElementById("sliderWrap").addEventListener("touchstart",e=>{ts=e.touches[0].clientX;e.stopPropagation();},{passive:true});
 document.getElementById("sliderWrap").addEventListener("touchend",e=>{
   const diff=ts-e.changedTouches[0].clientX;
   if(Math.abs(diff)>40)goSlide(cur_s+(diff>0?1:-1));
+  e.stopPropagation();
 });
 
 // ── AUDIO ──
