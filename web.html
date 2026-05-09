@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Putter</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;700;900&family=DM+Sans:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#08090f;
+  --text:#f0f2ff;
+  --muted:#4a5270;
+  --accent:#4a7eff;
+  --card:rgba(12,15,28,0.80);
+  --border:rgba(255,255,255,0.06);
+  --green:#1db954;
+  --green2:#57e88a;
+  --T:0.48s cubic-bezier(.4,0,.2,1);
+}
+[data-theme="light"]{
+  --bg:#c8deff;
+  --text:#0a1530;
+  --muted:#4a6090;
+  --accent:#1a4fd6;
+  --card:rgba(185,215,255,0.72);
+  --border:rgba(26,79,214,0.13);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-snap-type:y mandatory}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow-x:hidden;
+  cursor:none;
+  transition:background var(--T),color var(--T);
+}
+
+/* ── CURSOR ── */
+#cur{
+  width:10px;height:10px;border-radius:50%;
+  background:var(--accent);
+  position:fixed;pointer-events:none;z-index:9999;
+  transform:translate(-50%,-50%);
+  mix-blend-mode:difference;
+}
+#curRing{
+  width:32px;height:32px;border-radius:50%;
+  border:1px solid rgba(74,126,255,0.5);
+  position:fixed;pointer-events:none;z-index:9998;
+  transform:translate(-50%,-50%);
+  transition:left .1s ease-out,top .1s ease-out;
+}
+
+/* ── THEME BTN ── */
+.theme-btn{
+  position:fixed;top:1.4rem;right:1.6rem;z-index:600;
+  width:40px;height:40px;border-radius:50%;
+  border:1px solid var(--border);
+  background:var(--card);
+  backdrop-filter:blur(16px);
+  cursor:pointer;font-size:1rem;
+  display:flex;align-items:center;justify-content:center;
+  transition:background var(--T),transform .2s;
+  box-shadow:0 4px 20px rgba(0,0,0,.3);
+}
+.theme-btn:hover{transform:scale(1.1);}
+
+/* ══════════════════════
+   HERO — 2-column split
+══════════════════════ */
+.hero{
+  width:100vw;height:100vh;
+  position:relative;overflow:hidden;
+  display:grid;
+  grid-template-columns:1fr 500px;
+  scroll-snap-align:start;
+}
+@media(max-width:860px){
+  .hero{grid-template-columns:1fr;grid-template-rows:1fr auto;}
+}
+
+/* Canvas bg */
+.hero-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0;}
+
+/* ── LEFT: PHOTO ── */
+.left-col{
+  position:relative;z-index:2;
+  display:flex;align-items:flex-end;justify-content:flex-start;
+  padding-left:0;
+  overflow:hidden;
+}
+.hero-photo-wrap{
+  position:relative;
+  width:min(700px, 95%);
+  cursor:pointer;
+  bottom:0;
+  margin-left: 3rem;
+}
+.hero-photo-wrap img{
+  width:100%;height:auto;display:block;
+  filter:drop-shadow(0 0 50px rgba(74,126,255,0.22));
+  transition:filter .4s,transform .4s;
+  -webkit-user-drag:none;user-select:none;pointer-events:none;
+}
+.hero-photo-wrap:hover img{transform:scale(1.02);}
+[data-theme="light"] .hero-photo-wrap img{
+  filter:drop-shadow(0 20px 40px rgba(26,79,214,0.18));
+}
+
+/* Name tooltip on hover */
+.name-hover{
+  position:absolute;
+  top:7%;left:0;right:0;
+  text-align:center;
+  pointer-events:none;
+  opacity:0;
+  transform:translateY(12px);
+  transition:opacity .35s,transform .35s;
+}
+.hero-photo-wrap:hover .name-hover{opacity:1;transform:translateY(0);}
+.name-hover-text{
+  font-family:'Unbounded',sans-serif;
+  font-size:clamp(1.2rem,3.5vw,2.4rem);
+  font-weight:900;letter-spacing:-0.04em;
+  color:var(--text);line-height:1;
+  transition:color var(--T);
+}
+.name-hover-sub{
+  margin-top:.35rem;font-size:.68rem;
+  letter-spacing:.18em;text-transform:uppercase;
+  color:var(--accent);transition:color var(--T);
+}
+.tap-hint{
+  position:absolute;bottom:2%;left:50%;transform:translateX(-50%);
+  font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);white-space:nowrap;
+  animation:hintPulse 2.5s ease-in-out infinite;pointer-events:none;
+}
+@keyframes hintPulse{0%,100%{opacity:.3}50%{opacity:.8}}
+
+/* ── RIGHT COL ── */
+.right-col{
+  position:absolute;
+  z-index:2;
+  display:flex;flex-direction:column;
+  gap:1.4rem;
+  /* center-right area: start at 45% from left, vertically centered */
+  left:47%;
+  top:52%;
+  transform:translateY(-50%);
+  width:40%;
+}
+
+/* ── IMAGE SLIDER ── */
+.slider-wrap{
+  position:relative;
+  border-radius:20px;
+  overflow:hidden;
+  background:var(--card);
+  border:1px solid var(--border);
+  box-shadow:0 8px 40px rgba(0,0,0,0.3);
+  aspect-ratio:16/11;
+  flex-shrink:0;
+}
+.slider-track{
+  display:flex;
+  width:100%;height:100%;
+  transition:transform .55s cubic-bezier(.77,0,.18,1);
+}
+.slider-slide{
+  min-width:100%;height:100%;flex-shrink:0;
+}
+.slider-slide img{
+  width:100%;height:100%;
+  object-fit:cover;display:block;
+}
+/* label on slide */
+.slide-label{
+  position:absolute;bottom:0;left:0;right:0;
+  padding:.7rem 1rem;
+  background:linear-gradient(to top,rgba(0,0,0,.6),transparent);
+  font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;
+  color:rgba(255,255,255,.75);
+  font-weight:400;
+  transition:opacity .3s;
+}
+.slider-arrows{
+  position:absolute;top:50%;right:.7rem;
+  transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:.4rem;
+}
+.arr-btn{
+  width:28px;height:28px;border-radius:50%;
+  background:rgba(0,0,0,.4);backdrop-filter:blur(8px);
+  border:1px solid rgba(255,255,255,.15);
+  color:#fff;font-size:.75rem;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .2s,transform .15s;
+}
+.arr-btn:hover{background:var(--accent);transform:scale(1.1);}
+.slider-dots{
+  position:absolute;bottom:.6rem;left:50%;transform:translateX(-50%);
+  display:flex;gap:.4rem;
+}
+.sdot{
+  width:5px;height:5px;border-radius:50%;
+  background:rgba(255,255,255,.3);cursor:pointer;
+  transition:background .2s,transform .2s;
+}
+.sdot.active{background:#fff;transform:scale(1.3);}
+
+/* ── PROJ CARDS ROW ── */
+.cards-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:.7rem;
+  flex-shrink:0;
+}
+.proj-card{
+  min-width:150px;flex-shrink:0;
+  background:var(--card);
+  backdrop-filter:blur(20px);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:1rem 1.1rem;
+  box-shadow:0 6px 30px rgba(0,0,0,.25);
+  cursor:default;
+  transition:transform .25s,box-shadow .25s;
+}
+.proj-card:hover{
+  transform:translateY(-5px);
+  box-shadow:0 14px 50px rgba(74,126,255,.2);
+}
+.proj-card .c-label{
+  font-size:.56rem;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--accent);font-weight:400;margin-bottom:.35rem;
+  transition:color var(--T);
+}
+.proj-card .c-title{
+  font-family:'Unbounded',sans-serif;
+  font-size:.72rem;font-weight:700;
+  color:var(--text);line-height:1.25;
+  transition:color var(--T);
+}
+.proj-card .c-sub{
+  margin-top:.3rem;font-size:.65rem;color:var(--muted);
+  font-weight:300;line-height:1.5;transition:color var(--T);
+}
+.proj-card .c-tag{
+  margin-top:.55rem;display:inline-block;
+  font-size:.55rem;padding:2px 8px;border-radius:99px;
+  border:1px solid var(--border);color:var(--muted);
+  transition:border-color var(--T),color var(--T);
+}
+
+/* scroll cue */
+.scroll-cue{
+  position:absolute;bottom:1.2rem;left:2rem;z-index:3;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  color:var(--muted);font-size:.6rem;letter-spacing:.1em;
+  text-transform:uppercase;pointer-events:none;
+}
+.scroll-line{
+  width:1px;height:36px;
+  background:linear-gradient(to bottom,transparent,var(--accent));
+  animation:scrollDrop 2s ease-in-out infinite;
+}
+@keyframes scrollDrop{
+  0%{transform:scaleY(0);transform-origin:top;opacity:0}
+  50%{transform:scaleY(1);transform-origin:top;opacity:1}
+  100%{transform:scaleY(1);transform-origin:bottom;opacity:0}
+}
+
+/* ══ DETAILS OVERLAY ══ */
+.details-overlay{
+  position:fixed;inset:0;z-index:500;
+  display:flex;align-items:flex-end;justify-content:center;
+  pointer-events:none;opacity:0;transition:opacity .35s;
+}
+.details-overlay.open{opacity:1;pointer-events:all;}
+.det-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.45);backdrop-filter:blur(8px);}
+.det-card{
+  position:relative;z-index:1;width:100%;max-width:640px;
+  background:var(--card);backdrop-filter:blur(28px);
+  border-top:1px solid var(--border);
+  border-radius:24px 24px 0 0;
+  padding:1.6rem 2.2rem 3rem;
+  transform:translateY(100%);
+  transition:transform .44s cubic-bezier(.77,0,.18,1);
+}
+.details-overlay.open .det-card{transform:translateY(0);}
+.det-handle{width:36px;height:4px;border-radius:99px;background:var(--muted);opacity:.3;margin:0 auto 1.5rem;}
+.det-close{
+  position:absolute;top:1.2rem;right:1.4rem;
+  width:30px;height:30px;border-radius:50%;
+  background:var(--border);border:none;color:var(--text);
+  cursor:pointer;font-size:.8rem;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .2s;
+}
+.det-close:hover{background:var(--accent);color:#fff;}
+.det-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem 2rem;}
+@media(max-width:480px){.det-grid{grid-template-columns:1fr;}}
+.det-block .lbl{
+  font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--muted);margin-bottom:.2rem;transition:color var(--T);
+}
+.det-block .val{
+  font-family:'Unbounded',sans-serif;font-size:.82rem;font-weight:400;
+  color:var(--text);line-height:1.35;transition:color var(--T);
+}
+.det-block .val.ac{color:var(--accent);}
+
+/* ══ DEK SECTION ══ */
+.dek-section{
+  width:100vw;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  padding:5rem 2rem;position:relative;scroll-snap-align:start;
+}
+.dek-section::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(var(--border) 1px,transparent 1px),
+    linear-gradient(90deg,var(--border) 1px,transparent 1px);
+  background-size:52px 52px;opacity:.7;
+}
+.dek-inner{
+  position:relative;z-index:1;max-width:580px;width:100%;
+  display:flex;flex-direction:column;gap:2.8rem;
+}
+.dek-eyebrow{font-size:.7rem;letter-spacing:.22em;text-transform:uppercase;color:var(--green);font-weight:400;}
+.dek-title{
+  font-family:'Unbounded',sans-serif;
+  font-size:clamp(2.4rem,8vw,5rem);font-weight:900;
+  line-height:.92;letter-spacing:-.04em;
+  color:var(--text);transition:color var(--T);
+}
+.dek-title span{color:var(--green);}
+.bar-outer{display:flex;flex-direction:column;gap:1rem;}
+.bar-top{display:flex;justify-content:space-between;align-items:flex-end;}
+.bar-pct-big{
+  font-family:'Unbounded',sans-serif;
+  font-size:clamp(3.5rem,14vw,7rem);font-weight:900;
+  line-height:1;letter-spacing:-.05em;color:var(--green);
+  text-shadow:0 0 50px rgba(29,185,84,.35);
+}
+.bar-right{text-align:right;}
+.bar-days-num{
+  font-family:'Unbounded',sans-serif;font-size:1.8rem;font-weight:700;
+  color:var(--text);line-height:1;transition:color var(--T);
+}
+.bar-days-lbl{font-size:.72rem;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-top:3px;transition:color var(--T);}
+.bar-track{
+  height:16px;border-radius:99px;
+  background:rgba(255,255,255,.05);
+  border:1px solid var(--border);overflow:hidden;transition:background var(--T);
+}
+[data-theme="light"] .bar-track{background:rgba(10,21,48,.08);}
+.bar-fill{
+  height:100%;border-radius:99px;
+  background:linear-gradient(90deg,#12a045,var(--green),var(--green2));
+  width:0%;transition:width 1.8s cubic-bezier(.4,0,.2,1);
+  box-shadow:0 0 18px rgba(29,185,84,.5);position:relative;
+}
+.bar-fill::after{
+  content:'';position:absolute;top:0;right:0;bottom:0;width:50px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.3));
+  animation:shim 1.8s ease-in-out infinite;
+}
+@keyframes shim{0%,100%{opacity:.3}50%{opacity:1}}
+.bar-ends{display:flex;justify-content:space-between;font-size:.7rem;color:var(--muted);letter-spacing:.05em;transition:color var(--T);}
+.dek-quote{
+  font-size:.95rem;font-style:italic;font-weight:300;
+  color:var(--muted);line-height:1.85;
+  border-left:2px solid var(--green);padding-left:1.2rem;transition:color var(--T);
+}
+</style>
+</head>
+<body>
+
+<div id="cur"></div>
+<div id="curRing"></div>
+<button class="theme-btn" id="themeBtn">🌙</button>
+
+<!-- ══ HERO ══ -->
+<section class="hero" id="heroSection">
+  <canvas class="hero-canvas" id="bgCanvas"></canvas>
+
+  <!-- LEFT: cutout photo -->
+  <div class="left-col">
+    <div class="hero-photo-wrap" id="photoWrap">
+      <div class="name-hover">
+        <div class="name-hover-text">Putter</div>
+        <div class="name-hover-sub">Student · M.6</div>
+      </div>
+      <img src="ter-Photoroom.png" />
+      <div class="tap-hint">tap to know more</div>
+    </div>
+  </div>
+
+  <!-- RIGHT: slider + cards -->
+  <div class="right-col">
+
+    <!-- IMAGE SLIDER -->
+    <div class="slider-wrap" id="sliderWrap">
+      <div class="slider-track" id="sliderTrack">
+        <div class="slider-slide">
+          <img src="S__7602185_0.jpg" />
+        </div>
+        <div class="slider-slide">
+          <img src="S__7602186_0.jpg" />
+        </div>
+        <div class="slider-slide">
+          <img src="S__7602187_0.jpg" />
+        </div>
+      </div>
+      <div class="slide-label" id="slideLabel">POSN COM</div>
+      <div class="slider-dots" id="sliderDots"></div>
+    </div>
+
+    <!-- PROJECT CARDS -->
+    <div class="cards-row" id="cardsRow">
+      <div class="proj-card">
+        <div class="c-label">Project 01</div>
+        <div class="c-title">Youtube<br>channel</div>
+        <div class="c-sub">อยากทำช่อง youtube</div>
+        <span class="c-tag">รอติดตาม</span>
+      </div>
+      <div class="proj-card">
+        <div class="c-label">Project 02</div>
+        <div class="c-title">DEK 70<br></div>
+        <div class="c-sub">อยากติดchula</div>
+        <span class="c-tag">CEDT</span>
+      </div>
+      <div class="proj-card">
+        <div class="c-label">Project 03</div>
+        <div class="c-title">AI<br>project</div>
+        <div class="c-sub">AI check something.....</div>
+        <span class="c-tag">python</span>
+      </div>
+      <div class="proj-card">
+        <div class="c-label">Project 04</div>
+        <div class="c-title">Make<br>Game</div>
+        <div class="c-sub">เกมไร้สาระก็จะทำ</div>
+        <span class="c-tag">Roblox</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="scroll-cue">
+    <span>scroll</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- ══ DEK 70 ══ -->
+<section class="dek-section" id="dekSection">
+  <div class="dek-inner">
+    <div>
+      <div class="dek-eyebrow">  · 2024 → 2027</div>
+      <div class="dek-title">Road to<br><span>DEK 70</span></div>
+    </div>
+    <div class="bar-outer">
+      <div class="bar-top">
+        <div class="bar-pct-big" id="barPct">0%</div>
+        <div class="bar-right">
+          <div class="bar-days-num" id="daysLeft">—</div>
+          <div class="bar-days-lbl">days left</div>
+        </div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" id="barFill"></div></div>
+      <div class="bar-ends">
+        <span>May 2024</span>
+        <span>TCAS · Mar 2027</span>
+      </div>
+    </div>
+    <p class="dek-quote">"Chula to Chula"</p>
+  </div>
+</section>
+
+<!-- ══ DETAILS OVERLAY ══ -->
+<div class="details-overlay" id="detOverlay">
+  <div class="det-backdrop" id="detBackdrop"></div>
+  <div class="det-card">
+    <div class="det-handle"></div>
+    <button class="det-close" id="detClose">✕</button>
+    <div class="det-grid">
+      <div class="det-block"><div class="lbl">Name</div><div class="val">Phongphirasak Khamphira</div></div>
+      <div class="det-block"><div class="lbl">Role</div><div class="val ac">Student · M.6</div></div>
+      <div class="det-block"><div class="lbl">School</div><div class="val">Princess Chulaborn Science High School Buriram</div></div>
+      <div class="det-block"><div class="lbl">Status</div><div class="val">DEK 70 </div></div>
+      <div class="det-block"><div class="lbl">Interests</div><div class="val">Code · AI</div></div>
+      <div class="det-block"><div class="lbl">Vibe</div><div class="val">No code but 67</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CURSOR ──
+const cur=document.getElementById("cur"),curR=document.getElementById("curRing");
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener("mousemove",e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+"px";cur.style.top=my+"px";});
+(function loop(){rx+=(mx-rx)*.13;ry+=(my-ry)*.13;curR.style.left=rx+"px";curR.style.top=ry+"px";requestAnimationFrame(loop);})();
+
+// ── CANVAS BG ──
+const canvas=document.getElementById("bgCanvas");
+const ctx=canvas.getContext("2d");
+let W,H,pts=[];
+function resize(){
+  W=canvas.width=window.innerWidth;H=canvas.height=window.innerHeight;
+  pts=Array.from({length:50},()=>({x:Math.random()*W,y:Math.random()*H,vx:(Math.random()-.5)*.32,vy:(Math.random()-.5)*.32,r:Math.random()*1.4+.4}));
+}
+resize();window.addEventListener("resize",resize);
+let mouseX=W/2,mouseY=H/2;
+document.addEventListener("mousemove",e=>{mouseX=e.clientX;mouseY=e.clientY;});
+function drawBg(){
+  const dark=document.documentElement.getAttribute("data-theme")==="dark";
+  ctx.clearRect(0,0,W,H);
+  const grd=ctx.createRadialGradient(W*.3,H*.9,50,W*.3,H*.9,W*.75);
+  if(dark){grd.addColorStop(0,"rgba(30,50,120,0.2)");grd.addColorStop(1,"rgba(8,9,15,0)");}
+  else{grd.addColorStop(0,"rgba(26,79,214,0.12)");grd.addColorStop(1,"rgba(200,222,255,0)");}
+  ctx.fillStyle=grd;ctx.fillRect(0,0,W,H);
+  const lc=dark?"rgba(74,126,255,":"rgba(26,79,214,";
+  pts.forEach(p=>{
+    p.x+=p.vx;p.y+=p.vy;
+    const ddx=mouseX-p.x,ddy=mouseY-p.y,dist=Math.sqrt(ddx*ddx+ddy*ddy);
+    if(dist<160){p.vx+=ddx/dist*.007;p.vy+=ddy/dist*.007;}
+    p.vx*=.996;p.vy*=.996;
+    if(p.x<0)p.x=W;if(p.x>W)p.x=0;if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+  });
+  for(let i=0;i<pts.length;i++){
+    for(let j=i+1;j<pts.length;j++){
+      const dx=pts[i].x-pts[j].x,dy=pts[i].y-pts[j].y,d=Math.sqrt(dx*dx+dy*dy);
+      if(d<120){ctx.beginPath();ctx.moveTo(pts[i].x,pts[i].y);ctx.lineTo(pts[j].x,pts[j].y);ctx.strokeStyle=lc+(0.15*(1-d/120))+")";ctx.lineWidth=.7;ctx.stroke();}
+    }
+  }
+  pts.forEach(p=>{ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fillStyle=dark?"rgba(100,150,255,0.5)":"rgba(26,79,214,0.4)";ctx.fill();});
+  requestAnimationFrame(drawBg);
+}
+drawBg();
+
+// ── SLIDER ──
+const slides=[
+  {label:"POSN COM"},
+  {label:"JORPOR3000"},
+  {label:"RELAX"}
+];
+let cur_s=0;
+const track=document.getElementById("sliderTrack");
+const labelEl=document.getElementById("slideLabel");
+const dotsEl=document.getElementById("sliderDots");
+
+// build dots
+slides.forEach((_,i)=>{
+  const d=document.createElement("div");
+  d.className="sdot"+(i===0?" active":"");
+  d.onclick=()=>goSlide(i);
+  dotsEl.appendChild(d);
+});
+
+function goSlide(n){
+  cur_s=(n+slides.length)%slides.length;
+  track.style.transform=`translateX(-${cur_s*100}%)`;
+  labelEl.textContent=slides[cur_s].label;
+  dotsEl.querySelectorAll(".sdot").forEach((d,i)=>d.classList.toggle("active",i===cur_s));
+  beep(600,"sine",.08,.1);
+}
+
+// auto-slide
+setInterval(()=>goSlide(cur_s+1),4000);
+
+// swipe support
+let ts=0;
+document.getElementById("sliderWrap").addEventListener("touchstart",e=>{ts=e.touches[0].clientX;},{passive:true});
+document.getElementById("sliderWrap").addEventListener("touchend",e=>{
+  const diff=ts-e.changedTouches[0].clientX;
+  if(Math.abs(diff)>40)goSlide(cur_s+(diff>0?1:-1));
+});
+
+// ── AUDIO ──
+const AC=window.AudioContext||window.webkitAudioContext;let ac;
+function getAC(){if(!ac)ac=new AC();return ac;}
+function beep(f,t,d,v=0.14,dl=0){
+  const c=getAC(),o=c.createOscillator(),g=c.createGain();
+  o.connect(g);g.connect(c.destination);
+  o.type=t;o.frequency.setValueAtTime(f,c.currentTime+dl);
+  g.gain.setValueAtTime(0,c.currentTime+dl);
+  g.gain.linearRampToValueAtTime(v,c.currentTime+dl+.01);
+  g.gain.exponentialRampToValueAtTime(.001,c.currentTime+dl+d);
+  o.start(c.currentTime+dl);o.stop(c.currentTime+dl+d+.05);
+}
+function sndOpen(){[330,415,523].forEach((f,i)=>beep(f,"sine",.3,.13,i*.08));}
+function sndClose(){beep(330,"sine",.2,.11);}
+
+// ── THEME ──
+const html=document.documentElement;
+const themeBtn=document.getElementById("themeBtn");
+themeBtn.addEventListener("click",()=>{
+  const dark=html.getAttribute("data-theme")==="dark";
+  html.setAttribute("data-theme",dark?"light":"dark");
+  themeBtn.textContent=dark?"☀️":"🌙";
+  dark?[523,659,784].forEach((f,i)=>beep(f,"sine",.2,.13,i*.07))
+      :[440,349,262].forEach((f,i)=>beep(f,"sine",.25,.13,i*.07));
+});
+
+// ── PHOTO CLICK → OVERLAY ──
+const overlay=document.getElementById("detOverlay");
+document.getElementById("photoWrap").addEventListener("click",()=>{overlay.classList.add("open");sndOpen();});
+document.getElementById("detBackdrop").addEventListener("click",()=>{overlay.classList.remove("open");sndClose();});
+document.getElementById("detClose").addEventListener("click",()=>{overlay.classList.remove("open");sndClose();});
+
+// ── DEK BAR ──
+const START=new Date("2024-05-11"),END=new Date("2027-03-05");
+function runBar(){
+  const now=new Date();
+  const pct=Math.round(Math.min(Math.max((now-START)/(END-START),0),1)*100);
+  const days=Math.max(0,Math.ceil((END-now)/86400000));
+  document.getElementById("daysLeft").textContent=days.toLocaleString();
+  const fill=document.getElementById("barFill"),pctEl=document.getElementById("barPct");
+  let c=0;const tick=()=>{if(c<=pct){fill.style.width=c+"%";pctEl.textContent=c+"%";c++;setTimeout(tick,22);}};
+  const ob=new IntersectionObserver(es=>{if(es[0].isIntersecting){tick();ob.disconnect();}},{threshold:.3});
+  ob.observe(document.getElementById("dekSection"));
+}
+runBar();
+</script>
+</body>
+</html>
