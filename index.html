@@ -601,12 +601,14 @@ function goSlide(n){
 setInterval(()=>goSlide(cur_s+1),4000);
 
 // swipe support
-let ts=0;
-document.getElementById("sliderWrap").addEventListener("touchstart",e=>{ts=e.touches[0].clientX;e.stopPropagation();},{passive:true});
+let ts=0, te=0;
+document.getElementById("sliderWrap").addEventListener("touchstart",e=>{
+  ts=e.touches[0].clientX;
+},{passive:true});
 document.getElementById("sliderWrap").addEventListener("touchend",e=>{
-  const diff=ts-e.changedTouches[0].clientX;
-  if(Math.abs(diff)>40)goSlide(cur_s+(diff>0?1:-1));
-  e.stopPropagation();
+  te=e.changedTouches[0].clientX;
+  const diff=ts-te;
+  if(Math.abs(diff)>30)goSlide(cur_s+(diff>0?1:-1));
 });
 
 // ── AUDIO ──
